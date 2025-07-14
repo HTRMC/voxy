@@ -10,10 +10,8 @@ import me.cortex.voxy.client.core.rendering.building.RenderGenerationService;
 import me.cortex.voxy.client.core.rendering.hierachical.AsyncNodeManager;
 import me.cortex.voxy.client.core.rendering.hierachical.HierarchicalOcclusionTraverser;
 import me.cortex.voxy.client.core.rendering.hierachical.NodeCleaner;
-import me.cortex.voxy.client.core.rendering.section.AbstractSectionRenderer;
+import me.cortex.voxy.client.core.rendering.section.*;
 import me.cortex.voxy.client.core.rendering.section.geometry.*;
-import me.cortex.voxy.client.core.rendering.section.IUsesMeshlets;
-import me.cortex.voxy.client.core.rendering.section.MDICSectionRenderer;
 import me.cortex.voxy.client.core.rendering.util.DownloadStream;
 import me.cortex.voxy.client.core.rendering.util.UploadStream;
 import me.cortex.voxy.common.Logger;
@@ -75,7 +73,9 @@ public class RenderService<T extends AbstractSectionRenderer<J, Q>, J extends Vi
         this.geometryData = (Q) new BasicSectionGeometryData(1<<20, geometryCapacity);
 
         //Max sections: ~500k
-        this.sectionRenderer = (T) new MDICSectionRenderer(this.modelService.getStore(), (BasicSectionGeometryData) this.geometryData);
+        //this.sectionRenderer = (T) new MDICSectionRenderer(this.modelService.getStore(), (BasicSectionGeometryData) this.geometryData);
+        //this.sectionRenderer = (T) new MeshSectionRenderer(this.modelService.getStore(), (BasicSectionGeometryData) this.geometryData);
+        this.sectionRenderer = (T) new MeshEXTSectionRenderer(this.modelService.getStore(), (BasicSectionGeometryData) this.geometryData);
         Logger.info("Using renderer: " + this.sectionRenderer.getClass().getSimpleName() + " with geometry buffer of: " + geometryCapacity + " bytes");
 
         //Do something incredibly hacky, we dont need to keep the reference to this around, so just connect and discard
