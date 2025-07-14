@@ -1,13 +1,13 @@
 #version 460 core
 
+#extension GL_EXT_mesh_shader : require
+
 layout(binding = 0) uniform sampler2D blockModelAtlas;
 layout(binding = 2) uniform sampler2D depthTex;
 
-struct PerPrimData {
+layout(location=1) perprimitiveEXT flat in PerPrimData {
     uvec4 data;
-};
-
-layout(location=1) perprimitiveEXT PerPrimData primIn;
+} primIn;
 
 layout(location = 0) out vec4 outColour;
 

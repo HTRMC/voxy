@@ -29,11 +29,9 @@ struct Task {
 
 taskPayloadSharedEXT Task task;
 
-struct PerPrimData {
+layout(location=1) perprimitiveEXT flat out PerPrimData {
     uvec4 data;
-};
-
-layout(location=1) perprimitiveEXT PerPrimData primOut[];
+} primOut[];
 
 
 uint getQuadId() {
