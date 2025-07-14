@@ -35,7 +35,7 @@ layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBu
 };
 #endif
 
-taskPayloadSharedEXT out Task {
+struct Task {
     //Tightly packed, prefix sum + offset
     //uvec4 binA;
     //uvec4 binB;
@@ -46,7 +46,8 @@ taskPayloadSharedEXT out Task {
 
     uint baseQuad;
     uint quadCount;
-} task;
+};
+taskPayloadSharedEXT Task task;
 
 #define BIN(br, cnt) if (br) { task.bins[i++] = (sum<<16)|off; sum += cnt; } off += cnt;
 //#define BIN(br, cnt) if (br) { batch[i++] = (sum<<16)|off; sum += cnt; } off += cnt;

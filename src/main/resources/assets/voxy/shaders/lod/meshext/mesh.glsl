@@ -14,7 +14,7 @@
 layout(local_size_x = MESH_SIZE, local_size_y=1, local_size_z=1) in;
 layout(triangles, max_vertices=(MESH_SIZE*4), max_primitives=(MESH_SIZE*2)) out;
 
-taskPayloadSharedEXT in Task {
+struct Task {
     //Tightly packed, prefix sum + offset
     //uvec4 binA;
     //uvec4 binB;
@@ -25,11 +25,15 @@ taskPayloadSharedEXT in Task {
 
     uint baseQuad;
     uint quadCount;
-} task;
+};
 
-layout(location=1) perprimitiveEXT out PerPrimData {
+taskPayloadSharedEXT Task task;
+
+struct PerPrimData {
     uvec4 data;
-} primOut[];
+};
+
+layout(location=1) perprimitiveEXT PerPrimData primOut[];
 
 
 uint getQuadId() {
