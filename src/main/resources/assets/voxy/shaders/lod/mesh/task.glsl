@@ -35,11 +35,11 @@ layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBu
 };
 #endif
 
-taskNV out Task {
+layout(std430) taskNV out Task {
     //Tightly packed, prefix sum + offset
-    uvec4 binA;
-    uvec4 binB;
-    //uint bins[8];
+    //uvec4 binA;
+    //uvec4 binB;
+    layout(offset = 0) uint bins[8];
 
     vec3 cameraOffset;
     uint lodLvl;
@@ -48,15 +48,15 @@ taskNV out Task {
     uint quadCount;
 } task;
 
-//#define BIN(br, cnt) if (br) { task.bins[i++] = (sum<<16)|off; sum += cnt; } off += cnt;
-#define BIN(br, cnt) if (br) { batch[i++] = (sum<<16)|off; sum += cnt; } off += cnt;
+#define BIN(br, cnt) if (br) { task.bins[i++] = (sum<<16)|off; sum += cnt; } off += cnt;
+//#define BIN(br, cnt) if (br) { batch[i++] = (sum<<16)|off; sum += cnt; } off += cnt;
 
 bvec3 and(bvec3 a, bvec3 b) {
     return bvec3(a.x&&b.x, a.y&&b.y, a.z&&b.z);
 }
 uint fillBins(uvec4 counts, ivec3 relative) {//Returns quad count
-    //#pragma unroll
-    //for (uint i = 0; i < 8; i++) task.bins[i] = uint(-1);
+    #pragma unroll
+    for (uint i = 0; i < 8; i++) task.bins[i] = uint(-1);
 
     uvec3 cA = counts.yzw&0xFFFFu;
     uvec3 cB = counts.yzw>>16;
@@ -70,7 +70,7 @@ uint fillBins(uvec4 counts, ivec3 relative) {//Returns quad count
     uint i = 0;
 
     //TODO: might need to move this into shared memory or somethign? so that compiler can reason about it (or make the bin an array in here and mesh)
-    uint batch[8] = {uint(-1), uint(-1), uint(-1), uint(-1), uint(-1),uint(-1),uint(-1),uint(-1)};
+    //uint batch[8] = {uint(-1), uint(-1), uint(-1), uint(-1), uint(-1),uint(-1),uint(-1),uint(-1)};
 
     BIN(dsc!=0, dsc);//Double sided quads
 
@@ -83,8 +83,8 @@ uint fillBins(uvec4 counts, ivec3 relative) {//Returns quad count
     BIN(a.z, cA.z);//West
     BIN(b.z, cB.z);//East
 
-    task.binA = uvec4(batch[0], batch[1], batch[2], batch[3]);
-    task.binB = uvec4(batch[4], batch[5], batch[6], batch[7]);
+    //task.binA = uvec4(batch[0], batch[1], batch[2], batch[3]);
+    //task.binB = uvec4(batch[4], batch[5], batch[6], batch[7]);
     return sum;
 }
 

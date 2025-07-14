@@ -14,11 +14,11 @@
 layout(local_size_x = MESH_SIZE) in;
 layout(triangles, max_vertices=(MESH_SIZE*4), max_primitives=(MESH_SIZE*2)) out;
 
-taskNV in Task {
+layout(std430) taskNV in Task {
     //Tightly packed, prefix sum + offset
-    uvec4 binA;
-    uvec4 binB;
-    //uint bins[8];
+    //uvec4 binA;
+    //uvec4 binB;
+    uint bins[8];
 
     vec3 cameraOffset;
     uint lodLvl;
@@ -27,20 +27,36 @@ taskNV in Task {
     uint quadCount;
 } task;
 
+layout(location=1) perprimitiveNV out PerPrimData {
+    uvec4 data;
+} primOut[];
+
 
 uint getQuadId() {
     uint mid = gl_GlobalInvocationID.x;
-    //Funny method
     uint cv = (mid<<16)|0xFFFFu;
-    uvec4 a = mix(uvec4(0), uvec4( 1, 2, 4,  8), lessThanEqual(task.binA, uvec4(cv))) +
-              mix(uvec4(0), uvec4(16,32,64,128), lessThanEqual(task.binB, uvec4(cv)));
+    /*
+    //Funny method
+    uvec4 a = mix(uvec4(0), uvec4( 1, 2, 4,  8), lessThanEqual(uvec4(task.bins[0],task.bins[1],task.bins[2],task.bins[3]), uvec4(cv))) +
+              mix(uvec4(0), uvec4(16,32,64,128), lessThanEqual(uvec4(task.bins[4],task.bins[5],task.bins[6],task.bins[7]), uvec4(cv)));
     uint act = a.x+a.y+a.z+a.w;
     uint id = findLSB(act^(act>>1));
 
     //uint point = mix(binB, binA, id<4)[id&3u];
-    uint point = mix(task.binB[id&3u], task.binA[id&3u], id<4);
+    uint point = task.bins[id];
 
     return (point&0xFFFFu)+(mid-(point>>16));
+    */
+    #pragma unroll
+    for (uint i = 0; i<7; i++) {
+        uint point = task.bins[i];
+        if (point<=cv&&cv<task.bins[i+1]) {
+            return (point&0xFFFFu)+(mid-(point>>16));
+        }
+    }
+    return -1;
+
+
 
     /*
     for (uint i = 0; i<7; i++) {
@@ -110,22 +126,37 @@ vec3 faceNormal(uint face) {
     return vec3(uint((face>>1)==2), uint((face>>1)==0), uint((face>>1)==1)) * (float(int(face)&1)*2-1);
 }
 
+uint packVec4(vec4 vec) {
+    uvec4 vec_=uvec4(vec*255)<<uvec4(24,16,8,0);
+    return vec_.x|vec_.y|vec_.z|vec_.w;
+}
+
 //===============
 vec3 cornerPos;
 vec2 axisFaceSize;
 uint face;
+
+vec4 faceSize;
+
+uint modelId;
+BlockModel model;
+uint faceData;
+bool isTranslucent;
+bool hasAO;
+bool isShaded;
+
 void setup(Quad quad) {
     face = extractFace(quad);
-    uint modelId = extractStateId(quad);
-    BlockModel model = modelData[modelId];
-    uint faceData = model.faceData[face];
-    bool isTranslucent = modelIsTranslucent(model);
-    bool hasAO = modelHasMipmaps(model);//TODO: replace with per face AO flag
-    bool isShaded = hasAO;//TODO: make this a per face flag
+    modelId = extractStateId(quad);
+    model = modelData[modelId];
+    faceData = model.faceData[face];
+    isTranslucent = modelIsTranslucent(model);
+    hasAO = modelHasMipmaps(model);//TODO: replace with per face AO flag
+    isShaded = hasAO;//TODO: make this a per face flag
 
     ivec2 quadSize = extractSize(quad);
 
-    vec4 faceSize = getFaceSize(faceData);
+    faceSize = getFaceSize(faceData);
 
     cornerPos = extractPos(quad);
     float depthOffset = extractFaceIndentation(faceData);
@@ -135,8 +166,73 @@ void setup(Quad quad) {
 
     axisFaceSize = (faceSize.yw + quadSize - 1);
 
-    //uv = faceSize.xz + axisFaceSize*vec2((cornerIdx>>1)&1, cornerIdx&1);
+    //uv =
 
+}
+
+vec2 getUvCorner(uint corner) {
+    return faceSize.xz + axisFaceSize*vec2((corner>>1)&1u, corner&1u);;
+}
+
+uvec4 createQuadData(Quad quad) {
+    uint flags = faceHasAlphaCuttout(faceData);
+
+    ivec2 quadSize = extractSize(quad);
+    //We need to have a conditional override based on if the model size is < a full face + quadSize > 1
+    flags |= uint(any(greaterThan(quadSize, ivec2(1)))) & faceHasAlphaCuttoutOverride(faceData);
+
+    flags |= uint(!modelHasMipmaps(model))<<1;
+
+    //Compute lighting
+    vec4 tinting = getLighting(extractLightId(quad));
+
+    //Apply model colour tinting
+    uint tintColour = model.colourTint;
+    if (modelHasBiomeLUT(model)) {
+        tintColour = colourData[tintColour + extractBiomeId(quad)];
+    }
+
+    uint conditionalTinting = 0;
+    if (tintColour != uint(-1)) {
+        flags |= 1u<<2;
+        conditionalTinting = tintColour;
+    }
+
+    uint addin = 0;
+    if (!isTranslucent) {
+        tinting.w = 0.0;
+        //Encode the face, the lod level and
+        uint encodedData = 0;
+        encodedData |= face;
+        encodedData |= (task.lodLvl<<3);
+        encodedData |= uint(hasAO)<<6;
+        addin = encodedData;
+    }
+
+    //Apply face tint
+    if (isShaded) {
+        //TODO: make branchless, infact apply ahead of time to the texture itself in ModelManager since that is
+        // per face
+        if ((face>>1) == 1) {//NORTH, SOUTH
+            tinting.xyz *= 0.8f;
+        } else if ((face>>1) == 2) {//EAST, WEST
+            tinting.xyz *= 0.6f;
+        } else if (face == 0) {//DOWN
+            tinting.xyz *= 0.5f;
+        }
+    }
+
+
+
+    uvec4 interData;
+
+    interData.x = (modelId<<16) | flags | (uint(quadSize.x-1)<<8) | (uint(quadSize.y-1)<<12);
+
+    interData.y = packVec4(tinting);
+    interData.z = conditionalTinting;
+    interData.w = addin|(face<<8);
+
+    return interData;
 }
 
 vec4 emitVertexPos(int corner) {
@@ -161,7 +257,7 @@ bvec2 whatRender(vec4 p1, vec4 p2, vec4 p0, vec4 p3) {
     vec2 t1max = max(ssmax, point);
 
     //Possibly cull the triangles if they dont cover the center of a pixel on the screen (degen)
-    float degenBias = 0.001f;
+    float degenBias = 0.01f;
     bool t0draw = all(notEqual(round(t0min-degenBias),round(t0max+degenBias)));
     bool t1draw = all(notEqual(round(t1min-degenBias),round(t1max+degenBias)));
     return bvec2(t0draw, t1draw);
@@ -195,16 +291,21 @@ void main() {
         vec4 p2 = emitVertexPos(2);
         vec4 p0 = emitVertexPos(0);
         vec4 p3 = emitVertexPos(3);
-        bvec2 what = whatRender(p1, p2, p0, p3);
+        bvec2 what = bvec2(true);//whatRender(p1, p2, p0, p3);
         uint c = uint(what.x)+uint(what.y);
         if (c == 0) {
             return;//Early exit
         }
+        uvec4 data = createQuadData(quad);
+
+        subgroupBarrier();
         uint triId_ = subgroupExclusiveAdd(c);
         uint triId = triId_;
         uint vertId_ = subgroupExclusiveAdd(c==1?3:4);
         uint vertId = vertId_;
         uint idxId = triId*3;
+
+
 
         //Emit common
         gl_MeshVerticesNV[vertId++].gl_Position = p1;
@@ -216,6 +317,7 @@ void main() {
 
             gl_MeshVerticesNV[vertId++].gl_Position = p0;
 
+            primOut[triId].data = data;
             gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid);
         }
         if (what.y) {
@@ -225,6 +327,7 @@ void main() {
 
             gl_MeshVerticesNV[vertId++].gl_Position = p3;
 
+            primOut[triId].data = data;
             gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid);
         }
 
