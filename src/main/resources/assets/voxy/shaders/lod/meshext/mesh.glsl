@@ -277,7 +277,7 @@ void main() {
         uint qid = getQuadId() + task.baseQuad;
         quad = quadData[qid];
         setup(quad);
-        bool render = dot(faceNormal(face), cornerPos) <= 0;
+        bool render = dot(faceNormal(face), cornerPos-cameraSubPos) <= 0;
         qid = render?qid:uint(-1);
     }
 
