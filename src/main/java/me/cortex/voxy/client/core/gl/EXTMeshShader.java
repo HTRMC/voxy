@@ -20,6 +20,6 @@ public class EXTMeshShader {
         if (glDrawMeshTasksIndirectEXT_ptr == 0) {
             throw new IllegalStateException("glDrawMeshTasksIndirectEXT not supported");
         }
-        JNI.callV(indirect, glDrawMeshTasksIndirectEXT_ptr);
+        JNI.callPV(indirect, glDrawMeshTasksIndirectEXT_ptr);
     }
 }
