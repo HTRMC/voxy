@@ -85,4 +85,14 @@ void main() {
     colour = computeColour(colour);
 
     outColour = colour;
+
+
+    /*
+    uint hash = gl_PrimitiveID*1231421+123141;
+    hash ^= hash>>16;
+    hash = hash*1231421+123141;
+    hash ^= hash>>16;
+    hash = hash * 1827364925 + 123325621;
+    outColour = vec4(float(hash&15u)/15, float((hash>>4)&15u)/15, float((hash>>8)&15u)/15, 0);
+    */
 }

@@ -47,6 +47,7 @@ uint getQuadId() {
 
     return (point&0xFFFFu)+(mid-(point>>16));
     */
+
     #pragma unroll
     for (uint i = 0; i<7; i++) {
         uint point = task.bins[i];
@@ -132,7 +133,7 @@ uint packVec4(vec4 vec) {
 }
 
 //===============
-vec3 cornerPos;
+vec3 cornerPos;//Does not include cameraSubPos to get exact need to - cameraSubPos
 vec2 axisFaceSize;
 uint face;
 
@@ -240,29 +241,6 @@ vec4 emitVertexPos(int corner) {
     return MVP*vec4(pointPos, 1.0);
 }
 
-bvec2 whatRender(vec4 p1, vec4 p2, vec4 p0, vec4 p3) {
-    vec2 ssmin = ((p1.xy/p1.w)+1)*screenSize;
-    vec2 ssmax = ssmin;
-
-    vec2 point = ((p2.xy/p2.w)+1)*screenSize;
-    ssmin = min(ssmin, point);
-    ssmax = max(ssmax, point);
-
-    point = ((p0.xy/p0.w)+1)*screenSize;
-    vec2 t0min = min(ssmin, point);
-    vec2 t0max = max(ssmax, point);
-
-    point = ((p3.xy/p3.w)+1)*screenSize;
-    vec2 t1min = min(ssmin, point);
-    vec2 t1max = max(ssmax, point);
-
-    //Possibly cull the triangles if they dont cover the center of a pixel on the screen (degen)
-    float degenBias = 0.01f;
-    bool t0draw = all(notEqual(round(t0min-degenBias),round(t0max+degenBias)));
-    bool t1draw = all(notEqual(round(t1min-degenBias),round(t1max+degenBias)));
-    return bvec2(t0draw, t1draw);
-}
-
 #ifdef HAS_STATISTICS
 layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBuffer {
     uint visibleSectionCounts[5];
@@ -284,24 +262,20 @@ void main() {
     subgroupBarrier();
 
 
-    bool render = dot(faceNormal(face), cornerPos) <= 0;
+    bool render = dot(faceNormal(face), cornerPos-cameraSubPos) <= 0;
 
     if (render) {
         vec4 p1 = emitVertexPos(1);
         vec4 p2 = emitVertexPos(2);
         vec4 p0 = emitVertexPos(0);
         vec4 p3 = emitVertexPos(3);
-        bvec2 what = bvec2(true);//whatRender(p1, p2, p0, p3);
-        uint c = uint(what.x)+uint(what.y);
-        if (c == 0) {
-            return;//Early exit
-        }
+
         uvec4 data = createQuadData(quad);
 
         subgroupBarrier();
-        uint triId_ = subgroupExclusiveAdd(c);
+        uint triId_ = subgroupExclusiveAdd(2);
         uint triId = triId_;
-        uint vertId_ = subgroupExclusiveAdd(c==1?3:4);
+        uint vertId_ = subgroupExclusiveAdd(4);
         uint vertId = vertId_;
         uint idxId = triId*3;
 
@@ -310,7 +284,8 @@ void main() {
         //Emit common
         gl_MeshVerticesNV[vertId++].gl_Position = p1;
         gl_MeshVerticesNV[vertId++].gl_Position = p2;
-        if (what.x) {
+
+        {
             gl_PrimitiveIndicesNV[idxId++] = vertId_+0;
             gl_PrimitiveIndicesNV[idxId++] = vertId_+1;
             gl_PrimitiveIndicesNV[idxId++] = vertId;
@@ -320,7 +295,8 @@ void main() {
             primOut[triId].data = data;
             gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid);
         }
-        if (what.y) {
+
+        {
             gl_PrimitiveIndicesNV[idxId++] = vertId_+0;
             gl_PrimitiveIndicesNV[idxId++] = vertId;
             gl_PrimitiveIndicesNV[idxId++] = vertId_+1;
@@ -333,7 +309,7 @@ void main() {
 
 
         subgroupBarrier();
-        uint count = subgroupMax(triId_+c);
+        uint count = subgroupMax(triId_+2);
         if (subgroupElect()) {
             gl_PrimitiveCountNV = count;
             #ifdef HAS_STATISTICS

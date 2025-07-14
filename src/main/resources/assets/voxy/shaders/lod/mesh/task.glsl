@@ -35,11 +35,11 @@ layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBu
 };
 #endif
 
-layout(std430) taskNV out Task {
+taskNV out Task {
     //Tightly packed, prefix sum + offset
     //uvec4 binA;
     //uvec4 binB;
-    layout(offset = 0) uint bins[8];
+    uint bins[8];
 
     vec3 cameraOffset;
     uint lodLvl;
