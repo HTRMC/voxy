@@ -1,10 +1,13 @@
 #version 460 core
 
+#extension GL_NV_fragment_shader_barycentric : require
+
 layout(binding = 0) uniform sampler2D blockModelAtlas;
 layout(binding = 2) uniform sampler2D depthTex;
 
 layout(location=1) perprimitiveNV in PerPrimData {
     uvec4 data;
+    vec4 uvData;
 } primIn;
 
 layout(location = 0) out vec4 outColour;
@@ -45,9 +48,22 @@ vec2 getBaseUV() {
     return modelUV + (vec2(face>>1, face&1u) * (1.0/(vec2(3.0, 2.0)*256.0)));
 }
 
+bool isTri0() {
+    return (gl_PrimitiveID&(1<<31))==0;
+}
 
 void main() {
-    vec2 uv = vec2(0);
+    bool tri0 = isTri0();
+    //1,2,0
+    //1,3,2
+    //vec2((corner>>1)&1u, corner&1u)
+
+    //vec2(0,gl_BaryCoordNV.x)+vec2(gl_BaryCoordNV.y,0)+vec2(0,0);
+    //vec2(0,gl_BaryCoordNV.x)+vec2(gl_BaryCoordNV.y,gl_BaryCoordNV.y)+vec2(gl_BaryCoordNV.z,0);
+
+
+    vec2 uv = fma(mix(gl_BaryCoordNV.zx+gl_BaryCoordNV.y, gl_BaryCoordNV.yx, bvec2(tri0)), primIn.uvData.zw, primIn.uvData.xy);
+    //Need to interpolate
 
     //Tile is the tile we are in
     vec2 tile;

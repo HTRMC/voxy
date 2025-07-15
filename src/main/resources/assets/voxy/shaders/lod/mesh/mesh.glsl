@@ -29,6 +29,7 @@ layout(std430) taskNV in Task {
 
 layout(location=1) perprimitiveNV out PerPrimData {
     uvec4 data;
+    vec4 uvData;
 } primOut[];
 
 
@@ -172,7 +173,7 @@ void setup(Quad quad) {
 }
 
 vec2 getUvCorner(uint corner) {
-    return faceSize.xz + axisFaceSize*vec2((corner>>1)&1u, corner&1u);;
+    return faceSize.xz + axisFaceSize*vec2((corner>>1)&1u, corner&1u);
 }
 
 uvec4 createQuadData(Quad quad) {
@@ -293,7 +294,8 @@ void main() {
             gl_MeshVerticesNV[vertId++].gl_Position = p0;
 
             primOut[triId].data = data;
-            gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid);
+            primOut[triId].uvData = vec4(faceSize.xz, axisFaceSize);
+            gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid|(0u<<31));
         }
 
         {
@@ -304,7 +306,8 @@ void main() {
             gl_MeshVerticesNV[vertId++].gl_Position = p3;
 
             primOut[triId].data = data;
-            gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid);
+            primOut[triId].uvData = vec4(faceSize.xz, axisFaceSize);
+            gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid|(1u<<31));
         }
 
 
