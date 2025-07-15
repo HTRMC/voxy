@@ -2,6 +2,9 @@
 
 #extension GL_NV_mesh_shader : require
 
+//TODO: maybe do 2 sections per workgroup instead of 1, this should double throughput with more complex sections
+// however will require a rewrite of how the task payload functions, since we want to still keep it under 108 bytes
+// in theory the maximum we can do is 4 sections in a workgroup
 layout(local_size_x=1) in;
 
 #import <voxy:lod/section.glsl>
@@ -72,6 +75,11 @@ uint fillBins(uvec4 counts, ivec3 relative) {//Returns quad count
     //TODO: might need to move this into shared memory or somethign? so that compiler can reason about it (or make the bin an array in here and mesh)
     //uint batch[8] = {uint(-1), uint(-1), uint(-1), uint(-1), uint(-1),uint(-1),uint(-1),uint(-1)};
 
+
+
+    //TODO IDEA: add inline merging, meaning if previous bin was true and so are we, just increment sum, dont take up new bucket
+    // this should allow for a new minimum number of bins especially when combined with other sections in the subgroup
+    // with merging, worst case bin count is 4
     BIN(dsc!=0, dsc);//Double sided quads
 
     //TODO: compute prefix sums and then jsut batch set into the array (this is an optimization)
@@ -94,7 +102,7 @@ void main() {
     uint vis = visibilityData[secId];
 
     bool shouldRender = (vis&0x7fffffffu) == frameId-1;//-1 since we are technically in the next frame for the primary rasterization
-    bool renderTemporally = (vis&0x80000000u)==0;
+    bool renderTemporally = (vis&0x80000000u)==0;// If we are the temporal specialization, only render if marked as render temporally
 
     task.quadCount = 0;
 
@@ -111,6 +119,12 @@ void main() {
         #endif
 
         //TODO: here enqueue the id here for both translucent and temporal (if relevant) (* note technically dont need for temporal as can just check :tm: if we are in temporal render mode)
+
+        //TODO: in the temporal phase, extract the sections that are ment to be rendered and are also translucent
+        // enqueue them into a seperate buffer and increment the bin counters based on distance
+        // this should allow a massive simplificattion of the raster pipeline by eliminating all command gen shaders + prep shaders
+
+
 
         task.baseQuad  = extractQuadStart(section);
         task.quadCount = fillBins(section.b, relative);
