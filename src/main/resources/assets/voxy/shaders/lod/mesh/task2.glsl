@@ -1,0 +1,154 @@
+#version 460 core
+
+#extension GL_NV_mesh_shader : require
+
+layout(local_size_x=4) in;
+
+#import <voxy:lod/section.glsl>
+
+bvec3 and(bvec3 a, bvec3 b) {
+    return bvec3(a.x&&b.x, a.y&&b.y, a.z&&b.z);
+}
+
+layout(binding = 0, std140) uniform SceneUniform {
+    mat4 MVP;
+    ivec3 baseSectionPos;
+    uint frameId;
+    vec3 cameraSubPos;
+    uint pad_;
+    vec2 screenSize;
+};
+
+layout(binding = 1, std430) restrict readonly buffer IndirectSectionLookupBuffer {
+    uint sectionCount;
+    uint indirectLookup[];
+};
+
+layout(binding = 2, std430) restrict readonly buffer SectionBuffer {
+    SectionMeta sectionData[];
+};
+
+layout(binding = 3, std430) restrict readonly buffer VisibilityBuffer {
+    uint visibilityData[];
+};
+
+#ifdef HAS_STATISTICS
+layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBuffer {
+    uint visibleSectionCounts[5];
+    uint quadCounts[5];
+};
+#endif
+
+taskNV out Task {
+    uvec4 control;//the control vec it defines what subvector to use, it is effectivly the terminating ranges of each bin
+    uvec4 bins[4];//the bins for each section the last component of each bin is the quad offset
+
+    uint launchSize;
+} task;
+
+#define BIN(br, cnt) if (br) { if (!pset) {bin[i++] = (sum<<16)|off;} sum += cnt; } pset = br; off += cnt;
+
+/*
+void createBin(out uvec4 bin, out uint sum, out uint offset, uint dsc, bvec3 a, bvec3 b, uvec3 cA, uvec3 cB) {
+    bin = uvec4(-1);
+
+    bool pset = false;
+    uint i = 0;
+    sum = 0;
+    offset = counts.x&0xFFFFu;//translucent quads
+
+    uint dsc = counts.x>>16;//double sided quads
+
+    uint off = counts.x&0xFFFFu;//translucent quads
+    uint i = 0;
+
+    BIN(dsc!=0, dsc);//Double sided quads
+
+
+    BIN(a.x, cA.x);//Down
+    BIN(b.x, cB.x);//Up
+    BIN(a.y, cA.y);//North
+    BIN(b.y, cB.y);//South
+    BIN(a.z, cA.z);//West
+    BIN(b.z, cB.z);//East
+}*/
+
+uint fillBins(uvec4 counts, ivec3 relative) {//Returns quad count
+    uvec3 cA = counts.yzw&0xFFFFu;
+    uvec3 cB = counts.yzw>>16;
+
+    bvec3 a = and(notEqual(cA, uvec3(0)), lessThanEqual(ivec3(0), relative.yzx));
+    bvec3 b = and(notEqual(cB, uvec3(0)), lessThanEqual(relative.yzx, ivec3(0)));
+
+    //compute the merged bin values
+    uvec4 bin = uvec4(-1);
+
+    bool pset = false;
+    uint i = 0;
+    uint sum = 0;
+    uint offset = counts.x&0xFFFFu;//translucent quads
+
+    uint dsc = counts.x>>16;//double sided quads
+
+    uint off = counts.x&0xFFFFu;//translucent quads
+    uint i = 0;
+
+    BIN(dsc!=0, dsc);//Double sided quads
+
+
+    BIN(a.x, cA.x);//Down
+    BIN(b.x, cB.x);//Up
+    BIN(a.y, cA.y);//North
+    BIN(b.y, cB.y);//South
+    BIN(a.z, cA.z);//West
+    BIN(b.z, cB.z);//East
+
+    //bin contains filled bin data, non filled slots contain -1
+
+    return sum;
+}
+
+
+void main() {
+    if (sectionCount<=gl_GlobalInvocationID.x) {
+        return;
+    }
+    if (subgroupElect()) {
+        task.quadCount = 0;
+    }
+
+    uint secId = indirectLookup[gl_GlobalInvocationID.x];
+    uint vis = visibilityData[secId];
+
+    bool shouldRender = (vis&0x7fffffffu) == frameId-1;//-1 since we are technically in the next frame for the primary rasterization
+    bool renderTemporally = (vis&0x80000000u)==0;// If we are the temporal specialization, only render if marked as render temporally
+
+    if (shouldRender) {
+        SectionMeta section = sectionData[secId];
+
+        uint detail = extractDetail(section);
+        ivec3 ipos = extractPosition(section);
+
+        ivec3 relative = ipos-(baseSectionPos>>detail);
+
+        #ifdef HAS_STATISTICS
+        atomicAdd(visibleSectionCounts[detail], 1);
+        #endif
+
+        //TODO: here enqueue the id here for both translucent and temporal (if relevant) (* note technically dont need for temporal as can just check :tm: if we are in temporal render mode)
+
+        //TODO: in the temporal phase, extract the sections that are ment to be rendered and are also translucent
+        // enqueue them into a seperate buffer and increment the bin counters based on distance
+        // this should allow a massive simplificattion of the raster pipeline by eliminating all command gen shaders + prep shaders
+
+
+
+        task.baseQuad  = extractQuadStart(section);
+        task.quadCount = fillBins(section.b, relative);
+
+        task.cameraOffset = vec3(((ipos<<detail) - baseSectionPos)<<5);
+        task.lodLvl = detail;
+    }
+
+    gl_TaskCountNV = (task.quadCount+(MESH_SIZE-1))/MESH_SIZE;
+}

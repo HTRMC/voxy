@@ -27,11 +27,8 @@ layout(std430) taskNV in Task {
     uint quadCount;
 } task;
 
-layout(location=1) perprimitiveNV out PerPrimData {
-    uvec4 data;
-    vec4 uvData;
-} primOut[];
-
+perprimitiveNV out uvec4 primData[MESH_SIZE*2];
+perprimitiveNV out vec4 uvData[MESH_SIZE*2];
 
 uint getQuadId() {
     uint mid = gl_GlobalInvocationID.x;
@@ -260,31 +257,44 @@ void main() {
     Quad quad = quadData[qid];
     setup(quad);
 
-    subgroupBarrier();
-
-
     bool render = dot(faceNormal(face), cornerPos-cameraSubPos) <= 0;
-
+    subgroupBarrier();
+    uint qId = subgroupExclusiveAdd(render?1:0);
     if (render) {
-        vec4 p1 = emitVertexPos(1);
-        vec4 p2 = emitVertexPos(2);
-        vec4 p0 = emitVertexPos(0);
-        vec4 p3 = emitVertexPos(3);
 
         uvec4 data = createQuadData(quad);
-
         subgroupBarrier();
-        uint triId_ = subgroupExclusiveAdd(2);
-        uint triId = triId_;
-        uint vertId_ = subgroupExclusiveAdd(4);
-        uint vertId = vertId_;
-        uint idxId = triId*3;
+        primData[qId*2] = data;
+        uvData[qId*2] = vec4(faceSize.xz, axisFaceSize);
+        primData[qId*2+1] = data;
+        uvData[qId*2+1] = vec4(faceSize.xz, axisFaceSize);
 
+        #define VID(i) (gl_LocalInvocationIndex*4+i)
 
+        gl_MeshVerticesNV[VID(0)].gl_Position = emitVertexPos(1);
+        gl_MeshVerticesNV[VID(1)].gl_Position = emitVertexPos(2);
+
+        gl_MeshVerticesNV[VID(2)].gl_Position = emitVertexPos(0);
+        gl_MeshVerticesNV[VID(3)].gl_Position = emitVertexPos(3);
+
+        gl_PrimitiveIndicesNV[qId*6+0] = VID(0);
+        gl_PrimitiveIndicesNV[qId*6+1] = VID(1);
+        gl_PrimitiveIndicesNV[qId*6+2] = VID(2);
+
+        gl_PrimitiveIndicesNV[qId*6+3] = VID(0);
+        gl_PrimitiveIndicesNV[qId*6+4] = VID(3);
+        gl_PrimitiveIndicesNV[qId*6+5] = VID(1);
+
+        gl_MeshPrimitivesNV[qId*2].gl_PrimitiveID = int(qid|(0u<<31));
+        gl_MeshPrimitivesNV[qId*2+1].gl_PrimitiveID = int(qid|(1u<<31));
+
+        /*
+        //vec4 p1 = ;
+        //vec4 p2 = ;
+        //vec4 p0 = emitVertexPos(0);
+        //vec4 p3 = emitVertexPos(3);
 
         //Emit common
-        gl_MeshVerticesNV[vertId++].gl_Position = p1;
-        gl_MeshVerticesNV[vertId++].gl_Position = p2;
 
         {
             gl_PrimitiveIndicesNV[idxId++] = vertId_+0;
@@ -309,11 +319,13 @@ void main() {
             primOut[triId].uvData = vec4(faceSize.xz, axisFaceSize);
             gl_MeshPrimitivesNV[triId++].gl_PrimitiveID = int(qid|(1u<<31));
         }
+        */
 
 
         subgroupBarrier();
-        uint count = subgroupMax(triId_+2);
-        if (subgroupElect()) {
+        uint count = subgroupMax(qId);
+        if (count != 0 && subgroupElect()) {
+            count = count *2+2;
             gl_PrimitiveCountNV = count;
             #ifdef HAS_STATISTICS
             atomicAdd(quadCounts[task.lodLvl], count);
