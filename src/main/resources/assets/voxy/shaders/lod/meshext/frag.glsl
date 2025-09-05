@@ -5,7 +5,7 @@
 layout(binding = 0) uniform sampler2D blockModelAtlas;
 layout(binding = 2) uniform sampler2D depthTex;
 
-layout(location=1) perprimitiveEXT flat in PerPrimData {
+layout(location=1) perprimitiveEXT in PerPrimData {
     uvec4 data;
 } primIn;
 

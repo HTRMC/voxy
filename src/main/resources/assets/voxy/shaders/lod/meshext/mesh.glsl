@@ -29,7 +29,7 @@ struct Task {
 
 taskPayloadSharedEXT Task task;
 
-layout(location=1) perprimitiveEXT flat out PerPrimData {
+layout(location=1) perprimitiveEXT out PerPrimData {
     uvec4 data;
 } primOut[];
 
