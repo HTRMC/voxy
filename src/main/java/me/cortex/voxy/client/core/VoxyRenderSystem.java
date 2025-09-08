@@ -20,6 +20,7 @@ import me.cortex.voxy.client.core.rendering.hierachical.HierarchicalOcclusionTra
 import me.cortex.voxy.client.core.rendering.hierachical.NodeCleaner;
 import me.cortex.voxy.client.core.rendering.section.AbstractSectionRenderer;
 import me.cortex.voxy.client.core.rendering.section.MDICSectionRenderer;
+import me.cortex.voxy.client.core.rendering.section.MeshEXTSectionRenderer;
 import me.cortex.voxy.client.core.rendering.section.geometry.BasicSectionGeometryData;
 import me.cortex.voxy.client.core.rendering.section.geometry.IGeometryData;
 import me.cortex.voxy.client.core.rendering.util.DownloadStream;
@@ -69,7 +70,8 @@ public class VoxyRenderSystem {
 
     private static AbstractSectionRenderer<?,?> createSectionRenderer(AbstractRenderPipeline pipeline, ModelStore modelStore, IGeometryData geometryData) {
         //TODO: need todo a thing where selects optimal section render based on if supports the pipeline and geometry data type
-        return new MDICSectionRenderer(pipeline, modelStore, (BasicSectionGeometryData) geometryData);//We only have MDIC backend... for now
+        //return new MDICSectionRenderer(pipeline, modelStore, (BasicSectionGeometryData) geometryData);//We only have MDIC backend... for now
+        return new MeshEXTSectionRenderer(pipeline, modelStore, (BasicSectionGeometryData) geometryData);
     }
 
     public VoxyRenderSystem(WorldEngine world, ServiceThreadPool threadPool) {
