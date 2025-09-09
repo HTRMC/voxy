@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinWindow {
     @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/Window;throwOnGlError()V"))
     private void injectInitWindow(WindowEventHandler eventHandler, MonitorTracker monitorTracker, WindowSettings settings, String fullscreenVideoMode, String title, CallbackInfo ci) {
+        //System.load("C:\\Users\\Cortex\\Desktop\\minecraft\\mesabuild\\mesa\\builddir\\src\\gallium\\targets\\wgl\\libgallium_wgl.dll");
         //System.load("C:\\Program Files\\RenderDoc\\renderdoc.dll");
         var prop = System.getProperty("voxy.forceGpuSelectionIndex", "NO");
         if (!prop.equals("NO")) {
