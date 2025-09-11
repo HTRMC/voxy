@@ -40,12 +40,12 @@ struct Task {
     //uvec4 binA;
     //uvec4 binB;
     uint bins[8];
-
     vec3 cameraOffset;
     uint lodLvl;
 
     uint baseQuad;
     uint quadCount;
+    //uint padddd[64];
 };
 taskPayloadSharedEXT Task task;
 
@@ -97,8 +97,7 @@ void main() {
     bool shouldRender = (vis&0x7fffffffu) == frameId-1;//-1 since we are technically in the next frame for the primary rasterization
     bool renderTemporally = (vis&0x80000000u)==0;
 
-    task.quadCount = 0;
-
+    uint qc = 0;
     if (shouldRender) {
         SectionMeta section = sectionData[secId];
 
@@ -114,12 +113,14 @@ void main() {
         //TODO: here enqueue the id here for both translucent and temporal (if relevant) (* note technically dont need for temporal as can just check :tm: if we are in temporal render mode)
 
         task.baseQuad  = extractQuadStart(section);
-        task.quadCount = fillBins(section.b, relative);
+        qc = fillBins(section.b, relative);
+        task.quadCount = qc;
 
         task.cameraOffset = vec3(((ipos<<detail) - baseSectionPos)<<5);
         task.lodLvl = detail;
     }
 
+
     //It appears to be valid to read from taskPayloadSharedEXT
-    EmitMeshTasksEXT((task.quadCount+(MESH_SIZE-1))/MESH_SIZE, 1, 1);
+    EmitMeshTasksEXT((qc+(MESH_SIZE-1))/MESH_SIZE, 1, 1);
 }

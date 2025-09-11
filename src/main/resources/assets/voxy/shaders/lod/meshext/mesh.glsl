@@ -19,18 +19,19 @@ layout(triangles, max_vertices=(MESH_SIZE*4), max_primitives=(MESH_SIZE*2)) out;
 //uvec4 binB;
 struct Task {
     uint bins[8];
-
     vec3 cameraOffset;
     uint lodLvl;
 
     uint baseQuad;
     uint quadCount;
+    //uint padddd[64];
 };
 
 taskPayloadSharedEXT Task task;
 
 layout(location=1) perprimitiveEXT out PerPrimData {
     uvec4 data;
+    uvec4 padd;
 } primOut[];
 
 
@@ -273,6 +274,18 @@ layout(binding = STATISTICS_BUFFER_BINDING, std430) restrict buffer statisticsBu
 #endif
 
 void main() {
+    /*
+    if (task.quadCount == 0) {
+        SetMeshOutputsEXT(0,0);
+        return;
+    }
+    SetMeshOutputsEXT(0,0);
+    #ifdef HAS_STATISTICS
+    atomicAdd(quadCounts[task.quadCount%5], 1);
+    #endif
+    return;
+    */
+
     uint qid = uint(-1);
     Quad quad;
     if (gl_GlobalInvocationID.x<task.quadCount) {
@@ -288,6 +301,7 @@ void main() {
     uint triId_ = subgroupExclusiveAdd(qid!=uint(-1)?2:0);
     uint qc = subgroupMax(triId_+(qid!=uint(-1)?2:0));
     SetMeshOutputsEXT(qc*2, qc);
+
 
     #ifdef HAS_STATISTICS
     if (subgroupElect()) {
@@ -317,11 +331,11 @@ void main() {
         //Prim 1
             gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(vertId_+0, vertId_+1, vertId);
             gl_MeshVerticesEXT[vertId++].gl_Position = p0;
-            primOut[triId++].data = data;
+            primOut[triId++].data = uvec4(qid,0,0,0);
 
         //Prim 2
             gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(vertId_+0, vertId, vertId_+1);
             gl_MeshVerticesEXT[vertId++].gl_Position = p3;
-            primOut[triId++].data = data;
+            primOut[triId++].data = uvec4(qid,1,1,1);
     }
 }

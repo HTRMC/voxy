@@ -7,6 +7,7 @@ layout(binding = 2) uniform sampler2D depthTex;
 
 layout(location=1) perprimitiveEXT in PerPrimData {
     uvec4 data;
+    uvec4 padd;
 } primIn;
 
 layout(location = 0) out vec4 outColour;
@@ -49,6 +50,29 @@ vec2 getBaseUV() {
 
 
 void main() {
+    if (all(equal(primIn.data, uvec4(0)).yzw)) {
+        outColour = vec4(0,1,0,0);
+    } else {
+        if (all(equal(primIn.data, uvec4(1)).yzw)) {
+            outColour = vec4(1, 0, 1, 0);
+        } else {
+            outColour = vec4(primIn.data%256)/255;
+            return;
+        }
+    }
+    uint quadDebug = primIn.data.x;
+    uint hash = quadDebug;
+    if (hash != 0) {
+        hash = hash*1231421+123141;
+        hash ^= hash>>16;
+        hash = hash*1231421+123141;
+        hash ^= hash>>16;
+        hash = hash * 1827364925 + 123325621;
+    }
+    outColour = vec4(float(hash&15u)/15, float((hash>>4)&15u)/15, float((hash>>8)&15u)/15, 0);
+
+    return;
+
     vec2 uv = vec2(0);
 
     //Tile is the tile we are in
@@ -85,6 +109,14 @@ void main() {
     }
 
     colour = computeColour(colour);
-
     outColour = colour;
+
+    /*
+    uint quadDebug = gl_PrimitiveID;
+    uint hash = quadDebug*1231421+123141;
+    hash ^= hash>>16;
+    hash = hash*1231421+123141;
+    hash ^= hash>>16;
+    hash = hash * 1827364925 + 123325621;
+    outColour = vec4(float(hash&15u)/15, float((hash>>4)&15u)/15, float((hash>>8)&15u)/15, 1);*/
 }
