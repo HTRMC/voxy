@@ -31,7 +31,6 @@ taskPayloadSharedEXT Task task;
 
 layout(location=1) perprimitiveEXT out PerPrimData {
     uvec4 data;
-    uvec4 padd;
 } primOut[];
 
 
@@ -331,11 +330,11 @@ void main() {
         //Prim 1
             gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(vertId_+0, vertId_+1, vertId);
             gl_MeshVerticesEXT[vertId++].gl_Position = p0;
-            primOut[triId++].data = uvec4(qid,0,0,0);
+            primOut[triId++].data = data;
 
         //Prim 2
             gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(vertId_+0, vertId, vertId_+1);
             gl_MeshVerticesEXT[vertId++].gl_Position = p3;
-            primOut[triId++].data = uvec4(qid,1,1,1);
+            primOut[triId++].data = data;
     }
 }
