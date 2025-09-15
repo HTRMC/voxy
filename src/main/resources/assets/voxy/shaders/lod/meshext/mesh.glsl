@@ -24,7 +24,7 @@ struct Task {
 
     uint baseQuad;
     uint quadCount;
-    //uint padddd[64];
+    uint padddd[64];
 };
 
 taskPayloadSharedEXT Task task;
