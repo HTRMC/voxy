@@ -12,6 +12,7 @@
     "iris.MixinIrisSamplers",
     "iris.MixinLevelRenderer",
     "iris.MixinMatrixUniforms",
+    "iris.MixinPackRenderTargetDirectives",
     "iris.MixinProgramSet",
     "iris.MixinShaderPackSourceNames",
     "iris.MixinStandardMacros",
@@ -33,9 +34,11 @@
     "sodium.AccessorSodiumWorldRenderer",
     "sodium.MixinChunkJobQueue",
     "sodium.MixinDefaultChunkRenderer",
-    "sodium.MixinRenderRegionManager",
     "sodium.MixinRenderSectionManager",
-    "sodium.MixinSodiumWorldRenderer"
+    "sodium.MixinSodiumWorldRenderer",
+    "sodium.MixinSodiumOptionsGUI",
+    "sodium.AccessorColorSRGB",
+    "minecraft.MixinLayerLightSectionStorage"
   ],
   "injectors": {
     "defaultRequire": 1
