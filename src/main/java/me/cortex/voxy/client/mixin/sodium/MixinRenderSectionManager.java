@@ -43,7 +43,7 @@ public class MixinRenderSectionManager {
     @Inject(method = "renderOutOfGraph", at = @At("HEAD"))
     private void voxy$injectReset1(Viewport viewport, FogParameters fogParameters, CallbackInfo ci) {
         var vrs = IVoxyRenderSystemHolder.getNullable();
-        if (vrs != null && !IrisUtil.irisShadowActive()) {
+        if (vrs != null && !IrisUtil.irisShadowActive() && vrs.visbleSectionStream != null) {
             vrs.visbleSectionStream.reset();
         }
     }
@@ -51,7 +51,7 @@ public class MixinRenderSectionManager {
     @Inject(method = "readRenderListFromTree", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/lists/VisibleChunkCollector;<init>(Lnet/caffeinemc/mods/sodium/client/render/chunk/region/RenderRegionManager;I)V"))
     private void voxy$injectReset2(Viewport viewport, FogParameters fogParameters, CallbackInfo ci) {
         var vrs = IVoxyRenderSystemHolder.getNullable();
-        if (vrs != null && !IrisUtil.irisShadowActive()) {
+        if (vrs != null && !IrisUtil.irisShadowActive() && vrs.visbleSectionStream != null) {
             vrs.visbleSectionStream.reset();
         }
     }

@@ -30,7 +30,7 @@ public class MixinVisibleChunkCollector {
     private RenderRegion voxy$injectVisibleSectionGather(RenderRegionManager instance, int x, int y, int z) {
         var region = instance.getForChunk(x,y,z);
         VoxyRenderSystem vrs;
-        if (!IrisUtil.irisShadowActive() && (vrs = IVoxyRenderSystemHolder.getNullable()) != null && voxy$shouldUseForChunkBound(region, LocalSectionIndex.pack(x, y, z))) {
+        if (!IrisUtil.irisShadowActive() && (vrs = IVoxyRenderSystemHolder.getNullable()) != null && vrs.visbleSectionStream != null && voxy$shouldUseForChunkBound(region, LocalSectionIndex.pack(x, y, z))) {
             vrs.visbleSectionStream.put(SectionPos.asLong(x,y,z));
         }
         return region;

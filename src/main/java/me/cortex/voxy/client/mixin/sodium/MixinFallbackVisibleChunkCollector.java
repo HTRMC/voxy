@@ -31,7 +31,8 @@ public class MixinFallbackVisibleChunkCollector {
         var section = instance.getCurrent(x,y,z);
         VoxyRenderSystem vrs;
         if (!IrisUtil.irisShadowActive() && (vrs = IVoxyRenderSystemHolder.getNullable()) != null && voxy$shouldUseForChunkBound(section, LocalSectionIndex.pack(x, y, z))) {
-            vrs.visbleSectionStream.put(SectionPos.asLong(x,y,z));
+            if (vrs.visbleSectionStream != null)
+                vrs.visbleSectionStream.put(SectionPos.asLong(x,y,z));
         }
         return section;
     }
