@@ -23,6 +23,8 @@ vec4 getFaceSize(uint faceData) {
 
 vec2 taaOffset = vec2(0);//TODO: compute this
 
+#define FLUID_SURFACE_DROP 0.125
+
 struct QuadData {
     uvec4 attributeData;
 
@@ -142,6 +144,13 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     quad.lodScale = lodScale;
     quad.axis = face>>1;
     quad.basePoint = (quadStart*lodScale)+vec3(baseSection<<5);
+
+    if (face == 1u && modelIsFluid(model)) {
+        float voxelTop = quad.basePoint.y;
+        if (voxelTop >= fluidSurfaceY && voxelTop - lodScale < fluidSurfaceY) {
+            quad.basePoint.y = fluidSurfaceY - FLUID_SURFACE_DROP;
+        }
+    }
     #ifdef USE_SINGLE_TRI
     quad.quadSizeAddin = (faceSize.yw + (quadSize - 1)*2);
     #else
