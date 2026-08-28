@@ -23,8 +23,6 @@ vec4 getFaceSize(uint faceData) {
 
 vec2 taaOffset = vec2(0);//TODO: compute this
 
-#define FLUID_SURFACE_DROP 0.125
-
 struct QuadData {
     uvec4 attributeData;
 
@@ -137,8 +135,10 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     #ifdef USE_SINGLE_TRI
     faceSize *= 2;
     #endif
-    vec3 quadStart = extractPos(rawQuad);
-    float depthOffset = extractFaceIndentation(faceData);
+    vec3 rawPos = extractPos(rawQuad);
+    vec3 quadStart = rawPos;
+    float indentation = extractFaceIndentation(faceData);
+    float depthOffset = indentation/lodScale;
     quadStart += swizzelDataAxis(face>>1, vec3(faceSize.xz, mix(depthOffset, 1-depthOffset, float(face&1u))));
 
     quad.lodScale = lodScale;
@@ -146,9 +146,9 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     quad.basePoint = (quadStart*lodScale)+vec3(baseSection<<5);
 
     if (face == 1u && modelIsFluid(model)) {
-        float voxelTop = quad.basePoint.y;
+        float voxelTop = (rawPos.y + 1.0)*lodScale + float(baseSection.y<<5);
         if (voxelTop >= fluidSurfaceY && voxelTop - lodScale < fluidSurfaceY) {
-            quad.basePoint.y = fluidSurfaceY - FLUID_SURFACE_DROP;
+            quad.basePoint.y = fluidSurfaceY - indentation;
         }
     }
     #ifdef USE_SINGLE_TRI
